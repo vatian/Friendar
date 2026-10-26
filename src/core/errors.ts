@@ -8,6 +8,11 @@ const messages: Record<string, string> = {
   NOT_AUTHENTICATED: 'Вход не выполнен. Закройте приложение и откройте снова.',
 };
 
+// Функции (календарь, траты…) добавляют тексты своих ошибок, не меняя этот файл.
+export function registerErrorMessages(extra: Record<string, string>): void {
+  Object.assign(messages, extra);
+}
+
 export function errorText(error: unknown): string {
   const message =
     error && typeof error === 'object' && 'message' in error ? String(error.message) : '';

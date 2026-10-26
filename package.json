@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:db": "node supabase/tests/core.test.mjs && node supabase/tests/calendar.test.mjs",
+    "test:db": "node supabase/tests/core.test.mjs && node supabase/tests/calendar.test.mjs && node supabase/tests/expenses.test.mjs",
     "test:auth": "node supabase/tests/initData.test.ts",
-    "test": "npm run test:db && npm run test:auth && npm run test:calendar",
-    "test:calendar": "node src/features/calendar/logic/windows.test.ts"
+    "test": "npm run test:db && npm run test:auth && npm run test:calendar && npm run test:expenses",
+    "test:calendar": "node src/features/calendar/logic/windows.test.ts",
+    "test:expenses": "node src/features/expenses/logic/money.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

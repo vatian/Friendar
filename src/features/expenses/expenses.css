@@ -1,0 +1,52 @@
+/* Стили «Трат». Цвета — из общей темы (core/ui/theme.css). */
+
+.person-item {
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.owed-to-me {
+  color: #2e9e5b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.i-owe {
+  color: var(--destructive);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.segmented {
+  display: flex;
+  padding: 3px;
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.segmented button {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--button);
+  color: var(--button-text);
+  font-weight: 600;
+}
+
+.amount-input {
+  flex: 0 0 110px;
+  text-align: right;
+}
