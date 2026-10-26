@@ -1,0 +1,6 @@
+# Настройки Supabase CLI для этого проекта.
+project_id = "Friendar"
+
+[functions.telegram-auth]
+# Функцию вызывают ещё не вошедшие пользователи: она сама проверяет подпись Telegram.
+verify_jwt = false
