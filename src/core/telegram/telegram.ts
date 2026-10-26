@@ -32,7 +32,7 @@ export function isInsideTelegram(): boolean {
 }
 
 // Имя для показа: ник, а если его нет — имя.
-export function displayName(user: Pick<TelegramUser, 'username' | 'first_name'>): string {
+export function displayName(user: { username?: string | null; first_name: string }): string {
   return user.username ? `@${user.username}` : user.first_name;
 }
 
