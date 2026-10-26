@@ -56,6 +56,13 @@ function CalendarView(props: {
   const [selected, setSelected] = useState(initialDay);
   const [view, setView] = useState(() => parseDateKey(initialDay));
   const [editing, setEditing] = useState<Slot | 'new' | null>(null);
+  // С кем смотрим окна: храним, кого сняли, — по умолчанию все, и новые участники тоже.
+  // Выбор виден только вам и сбрасывается при следующем открытии календаря.
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const included = useMemo(
+    () => members.filter((m) => m.id === profile.id || !excluded.has(m.id)),
+    [members, excluded, profile.id],
+  );
 
   useLiveUpdates(calendar, reload);
 
@@ -72,7 +79,7 @@ function CalendarView(props: {
     return commonWindows({
       mode: calendar.mode,
       range,
-      memberIds: members.map((m) => m.id),
+      memberIds: included.map((m) => m.id),
       slots: calendar.slots.map((s) => ({
         user_id: s.user_id,
         start: Date.parse(s.starts_at),
@@ -81,11 +88,11 @@ function CalendarView(props: {
       nightRules: calendar.nightRules,
       minMinutes: calendar.min_window_minutes,
     });
-  }, [calendar, members, view, tz, firstDay, lastDay]);
+  }, [calendar, included, view, tz, firstDay, lastDay]);
 
-  const memberIds = new Set(members.map((m) => m.id));
-  const markedIds = new Set(calendar.slots.filter((s) => memberIds.has(s.user_id)).map((s) => s.user_id));
-  const notMarked = members.filter((m) => !markedIds.has(m.id));
+  const includedIds = new Set(included.map((m) => m.id));
+  const markedIds = new Set(calendar.slots.filter((s) => includedIds.has(s.user_id)).map((s) => s.user_id));
+  const notMarked = included.filter((m) => !markedIds.has(m.id));
   // В режиме «Свободное» без единой отметки весь календарь формально «свободен» — это не показываем
   const nobodyMarked = calendar.mode === 'free' && markedIds.size === 0;
 
@@ -144,6 +151,23 @@ function CalendarView(props: {
         <div className="hint">Время показано по поясу: {timezoneName(tz)}</div>
       </div>
 
+      {members.length > 2 && (
+        <MemberFilter
+          members={members}
+          meId={profile.id}
+          excluded={excluded}
+          onToggle={(id) =>
+            setExcluded((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+          onAll={() => setExcluded(new Set())}
+        />
+      )}
+
       <MonthGrid
         year={view.year}
         month={view.month}
@@ -157,7 +181,10 @@ function CalendarView(props: {
         onMonthChange={(year, month) => setView({ year, month, day: 1 })}
       />
 
-      <h2 className="section-title">{dayTitle(selected)} · общие окна</h2>
+      <h2 className="section-title">
+        {dayTitle(selected)} · общие окна
+        {included.length < members.length && ` · ${included.length} из ${members.length}`}
+      </h2>
       <div className="list">
         {nobodyMarked ? (
           <div className="list-item hint">Пока никто не отметил свободное время.</div>
@@ -206,6 +233,50 @@ function CalendarView(props: {
       </button>
 
       {isOwner && <CalendarSettings calendar={calendar} ownerTimezone={tz} onChanged={reload} />}
+    </div>
+  );
+}
+
+// «С кем смотрим»: вы учитываетесь всегда, остальных можно снять и вернуть.
+function MemberFilter(props: {
+  members: CalendarMember[];
+  meId: string;
+  excluded: Set<string>;
+  onToggle: (id: string) => void;
+  onAll: () => void;
+}) {
+  const { members, meId, excluded } = props;
+  const others = members.filter((m) => m.id !== meId);
+  const count = 1 + others.filter((m) => !excluded.has(m.id)).length;
+
+  return (
+    <div className="card stack member-filter">
+      <div className="row">
+        <div className="grow">
+          С кем смотрим окна
+          <div className="hint">
+            {count === members.length ? 'Все участники' : `${count} из ${members.length}, включая вас`}
+          </div>
+        </div>
+        {excluded.size > 0 && (
+          <button className="text-button" onClick={props.onAll}>
+            Все
+          </button>
+        )}
+      </div>
+      <div className="chips">
+        <span className="chip active locked">Я</span>
+        {others.map((m) => (
+          <button
+            key={m.id}
+            className={`chip ${excluded.has(m.id) ? '' : 'active'}`}
+            aria-pressed={!excluded.has(m.id)}
+            onClick={() => props.onToggle(m.id)}
+          >
+            {displayName(m)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
