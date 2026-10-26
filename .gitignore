@@ -1,0 +1,17 @@
+# Зависимости и сборка
+node_modules/
+dist/
+
+# Секреты — никогда не попадают в репозиторий
+.env
+.env.*
+!.env.example
+supabase/functions/.env
+supabase/.temp/
+
+# Служебные файлы
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
