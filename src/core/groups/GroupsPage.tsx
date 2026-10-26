@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useProfile } from '../auth/AuthProvider';
 import { errorText } from '../errors';
-import { utcOffsetLabel } from '../profile/api';
+import { timezoneName, utcOffsetLabel } from '../profile/api';
 import { displayName } from '../telegram/telegram';
 import { Avatar } from '../ui/Avatar';
 import { useAsync } from '../ui/useAsync';
@@ -41,7 +41,7 @@ export function GroupsPage() {
         <div className="grow">
           <div>{me}</div>
           <div className="hint">
-            Часовой пояс: {profile.timezone.replace(/_/g, ' ')} ({utcOffsetLabel(profile.timezone)})
+            Часовой пояс: {timezoneName(profile.timezone)} ({utcOffsetLabel(profile.timezone)})
           </div>
         </div>
         <span className="chevron">›</span>

@@ -4,7 +4,7 @@ import { errorText } from '../errors';
 import { displayName } from '../telegram/telegram';
 import { useBackButton } from '../telegram/useBackButton';
 import { Avatar } from '../ui/Avatar';
-import { allTimezones, deviceTimezone, updateTimezone, utcOffsetLabel } from './api';
+import { allTimezones, deviceTimezone, timezoneName, updateTimezone, utcOffsetLabel } from './api';
 
 export function ProfilePage() {
   useBackButton('/');
@@ -60,7 +60,7 @@ export function ProfilePage() {
         </select>
         {device !== profile.timezone && (
           <button className="button secondary" disabled={saving} onClick={() => save(device)}>
-            Как на телефоне: {device.replace(/_/g, ' ')} ({utcOffsetLabel(device)})
+            Как на телефоне: {timezoneName(device)} ({utcOffsetLabel(device)})
           </button>
         )}
         {saving && <p className="hint">Сохраняем…</p>}
