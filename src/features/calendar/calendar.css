@@ -153,6 +153,10 @@
   background: var(--bg);
 }
 
+.disabled-option {
+  opacity: 0.55;
+}
+
 .choice {
   width: 100%;
   border: 2px solid transparent;

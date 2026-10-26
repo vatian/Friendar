@@ -9,6 +9,7 @@ export interface CalendarMember {
 
 export interface Slot {
   id: string;
+  series_id: string; // общий у отметок одного события в разных календарях
   user_id: string;
   starts_at: string;
   ends_at: string;
@@ -39,7 +40,7 @@ export async function fetchCalendarBundle(groupId: string): Promise<CalendarBund
       `owner_id,
        group_members(profiles(id, username, first_name)),
        calendars(id, mode, min_window_minutes, starts_on, ends_on,
-         calendar_slots(id, user_id, starts_at, ends_at, timezone),
+         calendar_slots(id, series_id, user_id, starts_at, ends_at, timezone),
          calendar_night_rules(enabled, night_start, night_end, timezone, applies_from, applies_to, created_at))`,
     )
     .eq('id', groupId)
@@ -112,18 +113,78 @@ export interface SlotInput {
   timezone: string;
 }
 
-export async function addSlot(calendarId: string, slot: SlotInput): Promise<void> {
-  const { error } = await supabase.from('calendar_slots').insert({ calendar_id: calendarId, ...slot });
-  if (error) throw error;
+// Мои календари (во всех моих группах) и есть ли в каждом событие seriesId — один запрос.
+export interface MyCalendar {
+  id: string;
+  mode: CalendarMode;
+  groupName: string;
+  hasEvent: boolean;
 }
 
-export async function updateSlot(id: string, slot: SlotInput): Promise<void> {
-  const { error } = await supabase.from('calendar_slots').update(slot).eq('id', id);
+export async function fetchMyCalendars(userId: string, seriesId: string | null): Promise<MyCalendar[]> {
+  const { data, error } = await supabase
+    .from('calendars')
+    .select('id, mode, created_at, groups(name), calendar_slots(id)')
+    .eq('calendar_slots.user_id', userId)
+    // Для нового события берём заведомо несуществующий номер — отметок не будет
+    .eq('calendar_slots.series_id', seriesId ?? '00000000-0000-0000-0000-000000000000')
+    .order('created_at');
   if (error) throw error;
+  const rows = data as unknown as {
+    id: string;
+    mode: CalendarMode;
+    groups: { name: string } | null;
+    calendar_slots: { id: string }[];
+  }[];
+  return rows.map((c) => ({
+    id: c.id,
+    mode: c.mode,
+    groupName: c.groups?.name ?? '',
+    hasEvent: c.calendar_slots.length > 0,
+  }));
 }
 
-export async function deleteSlot(id: string): Promise<void> {
-  const { error } = await supabase.from('calendar_slots').delete().eq('id', id);
+// Сохраняет событие во всех выбранных календарях.
+// Новое событие — одна вставка сразу во все календари.
+// Существующее — новое время во всех его отметках, убрать из снятых календарей, добавить в новые.
+export async function saveEvent(params: {
+  seriesId: string | null;
+  input: SlotInput;
+  calendarIds: string[]; // где событие должно быть
+  currentCalendarIds: string[]; // где оно уже есть
+}): Promise<void> {
+  const { input, calendarIds, currentCalendarIds } = params;
+  const seriesId = params.seriesId ?? crypto.randomUUID();
+  const rows = (ids: string[]) => ids.map((calendar_id) => ({ calendar_id, series_id: seriesId, ...input }));
+
+  if (!params.seriesId) {
+    const { error } = await supabase.from('calendar_slots').insert(rows(calendarIds));
+    if (error) throw error;
+    return;
+  }
+
+  const removed = currentCalendarIds.filter((id) => !calendarIds.includes(id));
+  const added = calendarIds.filter((id) => !currentCalendarIds.includes(id));
+
+  const updated = await supabase.from('calendar_slots').update(input).eq('series_id', seriesId);
+  if (updated.error) throw updated.error;
+  if (removed.length > 0) {
+    const { error } = await supabase
+      .from('calendar_slots')
+      .delete()
+      .eq('series_id', seriesId)
+      .in('calendar_id', removed);
+    if (error) throw error;
+  }
+  if (added.length > 0) {
+    const { error } = await supabase.from('calendar_slots').insert(rows(added));
+    if (error) throw error;
+  }
+}
+
+// Удаляет событие из всех календарей (база даст удалить только свои отметки).
+export async function deleteEvent(seriesId: string): Promise<void> {
+  const { error } = await supabase.from('calendar_slots').delete().eq('series_id', seriesId);
   if (error) throw error;
 }
 

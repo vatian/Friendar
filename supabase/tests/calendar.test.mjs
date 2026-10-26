@@ -90,6 +90,39 @@ await as(1, `select public.set_calendar_mode('${cal}', 'busy')`);
 r = await as(1, `select mode, (select count(*)::int from public.calendar_slots) as n from public.calendars`);
 check('смена режима удаляет отметки', r.rows?.[0]?.mode === 'busy' && r.rows[0].n === 0, r);
 
+// Одно событие в двух календарях: вторая группа (владелец 5), в ней тоже 2 и 3
+const g2 = (await as(5, `select public.create_group('Работа') as id`)).rows[0].id;
+const code2 = (await as(5, `select public.get_invite_code('${g2}') as c`)).rows[0].c;
+await as(2, `select public.join_group('${code2}')`);
+await as(3, `select public.join_group('${code2}')`);
+const cal2 = (await as(5, `select public.create_calendar('${g2}', 'busy') as id`)).rows[0].id;
+const S = '11111111-1111-1111-1111-111111111111';
+
+r = await as(2, `insert into public.calendar_slots (calendar_id, series_id, starts_at, ends_at, timezone)
+                 values ('${cal}', '${S}', '2027-02-01 10:00+03', '2027-02-01 12:00+03', 'Europe/Moscow'),
+                        ('${cal2}', '${S}', '2027-02-01 10:00+03', '2027-02-01 12:00+03', 'Europe/Moscow')
+                 returning id`);
+check('событие добавлено сразу в два календаря', r.rows?.length === 2, r);
+r = await as(2, `insert into public.calendar_slots (calendar_id, series_id, starts_at, ends_at, timezone)
+                 values ('${cal}', '${S}', '2027-02-01 10:00+03', '2027-02-01 12:00+03', 'Europe/Moscow')`);
+check('то же событие дважды в один календарь — нельзя', !!r.error, r);
+r = await as(3, `insert into public.calendar_slots (calendar_id, series_id, starts_at, ends_at, timezone)
+                 values ('${cal}', '${S}', '2027-02-01 15:00+03', '2027-02-01 16:00+03', 'Europe/Moscow') returning id`);
+check('чужой номер события не мешает другому участнику', r.rows?.length === 1, r);
+r = await as(3, `update public.calendar_slots set ends_at = '2027-02-01 23:00+03'
+                 where series_id = '${S}' and user_id = '${U(2)}' returning id`);
+check('чужое событие не изменить', r.rows?.length === 0, r);
+r = await as(2, `update public.calendar_slots set ends_at = '2027-02-01 13:00+03'
+                 where series_id = '${S}' returning calendar_id`);
+check('изменение события — сразу в обоих календарях, чужие не задеты', r.rows?.length === 2, r);
+r = await as(2, `delete from public.calendar_slots where series_id = '${S}' returning id`);
+check('удаление события — из обоих календарей', r.rows?.length === 2, r);
+r = await as(3, `select user_id from public.calendar_slots where series_id = '${S}'`);
+check('отметка другого участника с тем же номером осталась', r.rows?.length === 1 && r.rows[0].user_id === U(3), r);
+
+await as(3, `delete from public.calendar_slots where series_id = '${S}'`);
+for (const n of [2, 3, 5]) await as(n, `select public.leave_group('${g2}')`);
+
 // Ушёл из группы — отметки удалены
 await slot(2, '2027-01-11 10:00+03', '2027-01-11 12:00+03');
 await slot(3, '2027-01-11 10:00+03', '2027-01-11 12:00+03');
