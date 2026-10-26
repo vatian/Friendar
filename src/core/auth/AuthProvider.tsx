@@ -17,10 +17,25 @@ type AuthState =
   | { status: 'error'; message: string }
   | { status: 'ready'; profile: Profile; startParam: string | null };
 
-const AuthContext = createContext<AuthState>({ status: 'loading' });
+interface AuthContextValue {
+  state: AuthState;
+  setProfile: (profile: Profile) => void;
+}
+
+const AuthContext = createContext<AuthContextValue>({
+  state: { status: 'loading' },
+  setProfile: () => {},
+});
 
 export function useAuth(): AuthState {
-  return useContext(AuthContext);
+  return useContext(AuthContext).state;
+}
+
+// Для экранов внутри приложения: к этому моменту вход уже выполнен.
+export function useProfile(): [Profile, (profile: Profile) => void] {
+  const { state, setProfile } = useContext(AuthContext);
+  if (state.status !== 'ready') throw new Error('useProfile() до входа');
+  return [state.profile, setProfile];
 }
 
 const errorMessages: Record<string, string> = {
@@ -69,12 +84,17 @@ async function signIn(): Promise<AuthState> {
   return { status: 'ready', profile, startParam: data.start_param ?? null };
 }
 
+// Вход выполняется один раз за запуск: два одновременных входа мешали бы
+// друг другу (одноразовый токен второго отменяет токен первого).
+let signInOnce: Promise<AuthState> | null = null;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
 
   useEffect(() => {
     let cancelled = false;
-    signIn().then((result) => {
+    signInOnce ??= signIn();
+    signInOnce.then((result) => {
       if (!cancelled) setState(result);
     });
     return () => {
@@ -82,5 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
+  const setProfile = (profile: Profile) =>
+    setState((s) => (s.status === 'ready' ? { ...s, profile } : s));
+
+  return <AuthContext.Provider value={{ state, setProfile }}>{children}</AuthContext.Provider>;
 }

@@ -9,13 +9,24 @@ export interface TelegramUser {
   photo_url?: string;
 }
 
+interface TelegramBackButton {
+  show(): void;
+  hide(): void;
+  onClick(handler: () => void): void;
+  offClick(handler: () => void): void;
+}
+
 interface TelegramWebApp {
   initData: string;
   initDataUnsafe: { user?: TelegramUser; start_param?: string };
   colorScheme: 'light' | 'dark';
+  BackButton: TelegramBackButton;
   ready(): void;
   expand(): void;
   onEvent(event: 'themeChanged', handler: () => void): void;
+  showConfirm(message: string, callback: (ok: boolean) => void): void;
+  showAlert(message: string, callback?: () => void): void;
+  openTelegramLink(url: string): void;
 }
 
 declare global {
@@ -47,4 +58,30 @@ export function initTelegram(): void {
   tg.onEvent('themeChanged', applyScheme);
   tg.ready();
   tg.expand();
+}
+
+// Нативное окно подтверждения Telegram (в браузере — обычный confirm).
+export function confirmDialog(message: string): Promise<boolean> {
+  if (!tg) return Promise.resolve(window.confirm(message));
+  return new Promise((resolve) => tg.showConfirm(message, resolve));
+}
+
+export function alertDialog(message: string): Promise<void> {
+  if (!tg) {
+    window.alert(message);
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => tg.showAlert(message, () => resolve()));
+}
+
+// Ссылка-приглашение: открывает Mini App бота и передаёт код группы.
+export function inviteLink(code: string): string {
+  return `https://t.me/${import.meta.env.VITE_BOT_USERNAME}?startapp=${code}`;
+}
+
+// Открывает в Telegram выбор чата, куда переслать приглашение.
+export function shareLink(url: string, text: string): void {
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  if (tg) tg.openTelegramLink(shareUrl);
+  else window.open(shareUrl, '_blank');
 }

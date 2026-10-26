@@ -1,5 +1,12 @@
+import { HashRouter, Route, Routes, useParams } from 'react-router';
 import { AuthProvider, useAuth } from './core/auth/AuthProvider';
-import { displayName, isInsideTelegram } from './core/telegram/telegram';
+import { GroupPage } from './core/groups/GroupPage';
+import { GroupsPage } from './core/groups/GroupsPage';
+import { JoinFromInvite } from './core/groups/JoinFromInvite';
+import { ProfilePage } from './core/profile/ProfilePage';
+import { isInsideTelegram } from './core/telegram/telegram';
+import { useBackButton } from './core/telegram/useBackButton';
+import { features } from './features/registry';
 
 export function App() {
   if (!isInsideTelegram()) {
@@ -14,12 +21,14 @@ export function App() {
 
   return (
     <AuthProvider>
-      <Home />
+      <HashRouter>
+        <Screens />
+      </HashRouter>
     </AuthProvider>
   );
 }
 
-function Home() {
+function Screens() {
   const auth = useAuth();
 
   if (auth.status === 'loading') {
@@ -36,11 +45,24 @@ function Home() {
   }
 
   return (
-    <div className="card">
-      <h1>Friendar</h1>
-      <p>Привет, {displayName(auth.profile)}!</p>
-      <p className="hint">Вы вошли. Часовой пояс: {auth.profile.timezone}</p>
-      <p className="hint">Скоро здесь появятся группы и общий календарь.</p>
-    </div>
+    <>
+      <JoinFromInvite />
+      <Routes>
+        <Route path="/" element={<GroupsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/group/:groupId" element={<GroupPage />} />
+        <Route path="/group/:groupId/:featureId" element={<FeatureScreen />} />
+        <Route path="*" element={<GroupsPage />} />
+      </Routes>
+    </>
   );
+}
+
+// Экран функции внутри группы — какой именно, берём из реестра.
+function FeatureScreen() {
+  const { groupId = '', featureId } = useParams();
+  useBackButton(`/group/${groupId}`);
+  const feature = features.find((f) => f.id === featureId);
+  if (!feature) return <p className="hint">Такой функции нет.</p>;
+  return <feature.GroupScreen groupId={groupId} />;
 }

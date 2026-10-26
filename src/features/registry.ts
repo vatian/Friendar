@@ -2,10 +2,12 @@ import type { ComponentType } from 'react';
 
 // Описание функции приложения (календарь, траты и т. д.).
 // Каждая функция живёт в своей папке src/features/<id> и экспортирует такой объект.
+// Экран группы показывает все функции из списка ниже и открывает
+// GroupScreen по адресу /group/<id группы>/<id функции>.
 export interface Feature {
   id: string;
   title: string;
-  // Экран функции внутри группы
+  icon: string;
   GroupScreen: ComponentType<{ groupId: string }>;
 }
 

@@ -1,8 +1,13 @@
-// Прогон 0001_core.sql на PGlite с заглушками Supabase (auth.users, auth.uid(), роли).
+// Прогон всех миграций на PGlite с заглушками Supabase (auth.users, auth.uid(), роли)
+// и проверка правил ядра.
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
-const migration = readFileSync(new URL('../migrations/0001_core.sql', import.meta.url), 'utf8');
+const migrationsDir = new URL('../migrations/', import.meta.url);
+const migrations = readdirSync(migrationsDir)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(new URL(f, migrationsDir), 'utf8'));
 const db = new PGlite();
 
 await db.exec(`
@@ -16,7 +21,7 @@ await db.exec(`
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant execute on function auth.uid() to anon, authenticated;
 `);
-await db.exec(migration);
+for (const sql of migrations) await db.exec(sql);
 
 const U = (n) => `00000000-0000-0000-0000-00000000000${n}`;
 for (let i = 1; i <= 8; i++) {
@@ -117,6 +122,18 @@ for (const n of [2, 3, 4, 5, 7]) await as(n, `select public.leave_group('${g1}')
 await db.exec('reset role;');
 r = await db.query(`select count(*)::int as n from public.groups where id = '${g1}'`);
 check('последний вышел — группа удалена', r.rows[0].n === 0, r.rows);
+
+// Удаление аккаунта (делает администратор Supabase): владелец группы g2 — участник 2.
+const code2 = (await as(2, `select public.get_invite_code('${g2}') as c`)).rows[0].c;
+await as(3, `select public.join_group('${code2}')`);
+await db.exec('reset role;');
+r = await db.query(`delete from auth.users where id = '${U(2)}'`).catch((e) => ({ error: e.message }));
+check('удаление аккаунта владельца проходит', !r.error, r);
+r = await db.query(`select owner_id from public.groups where id = '${g2}'`);
+check('после удаления владельца права у следующего (3)', r.rows[0]?.owner_id === U(3), r.rows);
+r = await db.query(`delete from auth.users where id = '${U(3)}'`).catch((e) => ({ error: e.message }));
+r = await db.query(`select count(*)::int as n from public.groups where id = '${g2}'`);
+check('удалён последний участник — группа удалена', r.rows[0].n === 0, r.rows);
 
 console.log(failed ? `\n${failed} проверок не прошло` : '\nВсе проверки прошли');
 process.exit(failed ? 1 : 0);
