@@ -228,6 +228,34 @@ h1 {
   color: var(--destructive);
 }
 
+.form-title {
+  font-weight: 600;
+}
+
+.naming-item {
+  align-items: stretch;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.swatch {
+  width: 36px;
+  height: 36px;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch.chosen {
+  border-color: var(--text);
+}
+
 .overlay {
   position: fixed;
   inset: 0;

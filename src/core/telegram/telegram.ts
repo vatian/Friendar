@@ -42,9 +42,18 @@ export function isInsideTelegram(): boolean {
   return Boolean(tg?.initData);
 }
 
-// Имя для показа: ник, а если его нет — имя.
-export function displayName(user: { username?: string | null; first_name: string }): string {
-  return user.username ? `@${user.username}` : user.first_name;
+// Имя для показа: имя от владельца в этой группе → своё имя (премиум) → @ник → имя в Telegram.
+// У премиум-пользователей — ⭐.
+export function displayName(user: {
+  username?: string | null;
+  first_name: string;
+  custom_name?: string | null;
+  premium_since?: string | null;
+  group_name?: string | null;
+}): string {
+  const name =
+    user.group_name || user.custom_name || (user.username ? `@${user.username}` : user.first_name);
+  return user.premium_since ? `${name} ⭐` : name;
 }
 
 // Сообщаем Telegram, что приложение загрузилось, и синхронизируем светлую/тёмную тему.

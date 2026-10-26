@@ -1,30 +1,28 @@
 import { supabase } from '../supabase/client';
+import { MEMBERS_SELECT, parseMembers, type GroupMember } from './members';
 
 // Все изменения идут через функции в базе (create_group и др.):
 // они сами проверяют права и лимиты. Здесь — только тонкие обёртки.
 
-export const MAX_GROUPS_PER_USER = 2;
-export const MAX_MEMBERS_PER_GROUP = 6;
+// Лимиты — те же, что проверяет база (0006_premium.sql)
+export const groupsLimit = (premium: boolean) => (premium ? 10 : 2);
+export const membersLimit = (ownerPremium: boolean) => (ownerPremium ? 15 : 6);
 
 export interface GroupSummary {
   id: string;
   name: string;
   owner_id: string;
+  owner_premium: boolean;
   member_count: number;
 }
 
-export interface Member {
-  id: string;
-  username: string | null;
-  first_name: string;
-  photo_url: string | null;
-  joined_at: string;
-}
+export type Member = GroupMember;
 
 export interface GroupDetails {
   id: string;
   name: string;
   owner_id: string;
+  accent_color: string | null;
   members: Member[];
 }
 
@@ -32,39 +30,42 @@ export interface GroupDetails {
 export async function fetchMyGroups(): Promise<GroupSummary[]> {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, name, owner_id, created_at, group_members(count)')
+    .select('id, name, owner_id, created_at, owner:profiles!groups_owner_id_fkey(premium_since), group_members(count)')
     .order('created_at');
   if (error) throw error;
-  return data.map((g) => ({
+  const rows = data as unknown as {
+    id: string;
+    name: string;
+    owner_id: string;
+    owner: { premium_since: string | null } | null;
+    group_members: { count: number }[];
+  }[];
+  return rows.map((g) => ({
     id: g.id,
     name: g.name,
     owner_id: g.owner_id,
+    owner_premium: Boolean(g.owner?.premium_since),
     member_count: g.group_members[0]?.count ?? 0,
   }));
 }
 
-// Группа вместе с участниками и их профилями — один запрос.
+// Группа вместе с участниками и их именами — один запрос.
 export async function fetchGroup(groupId: string): Promise<GroupDetails | null> {
   const { data, error } = await supabase
     .from('groups')
-    .select(
-      'id, name, owner_id, group_members(joined_at, profiles(id, username, first_name, photo_url))',
-    )
+    .select(`id, name, owner_id, accent_color, ${MEMBERS_SELECT}`)
     .eq('id', groupId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  // profiles — один объект (у участника один профиль), уточняем тип вручную
-  const rows = data.group_members as unknown as {
-    joined_at: string;
-    profiles: Omit<Member, 'joined_at'> | null;
-  }[];
-  const members: Member[] = rows
-    .flatMap((m) => (m.profiles ? [{ ...m.profiles, joined_at: m.joined_at }] : []))
-    .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
-
-  return { id: data.id, name: data.name, owner_id: data.owner_id, members };
+  return {
+    id: data.id,
+    name: data.name,
+    owner_id: data.owner_id,
+    accent_color: data.accent_color,
+    members: parseMembers(data.group_members),
+  };
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -84,3 +85,9 @@ export const getInviteCode = (groupId: string) =>
   rpc<string>('get_invite_code', { p_group_id: groupId });
 export const regenerateInviteCode = (groupId: string) =>
   rpc<string>('regenerate_invite_code', { p_group_id: groupId });
+
+// Премиум-владелец: имя участника в этой группе (пустое — сбросить) и цвет кнопок группы
+export const setMemberName = (groupId: string, userId: string, name: string | null) =>
+  rpc<void>('set_member_name', { p_group_id: groupId, p_user_id: userId, p_name: name });
+export const setGroupColor = (groupId: string, color: string | null) =>
+  rpc<void>('set_group_color', { p_group_id: groupId, p_color: color });

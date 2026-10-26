@@ -1,11 +1,8 @@
+import { MEMBERS_SELECT, parseMembers, type GroupMember } from '../../core/groups/members';
 import { supabase } from '../../core/supabase/client';
 import type { CalendarMode, NightRule } from './logic/windows.ts';
 
-export interface CalendarMember {
-  id: string;
-  username: string | null;
-  first_name: string;
-}
+export type CalendarMember = GroupMember;
 
 export interface Slot {
   id: string;
@@ -38,7 +35,7 @@ export async function fetchCalendarBundle(groupId: string): Promise<CalendarBund
     .from('groups')
     .select(
       `owner_id,
-       group_members(profiles(id, username, first_name)),
+       ${MEMBERS_SELECT},
        calendars(id, mode, min_window_minutes, starts_on, ends_on,
          calendar_slots(id, series_id, user_id, starts_at, ends_at, timezone),
          calendar_night_rules(enabled, night_start, night_end, timezone, applies_from, applies_to, created_at))`,
@@ -51,7 +48,7 @@ export async function fetchCalendarBundle(groupId: string): Promise<CalendarBund
   // Связи без сгенерированных типов — уточняем вручную
   const row = data as unknown as {
     owner_id: string;
-    group_members: { profiles: CalendarMember | null }[];
+    group_members: unknown;
     calendars: RawCalendar | RawCalendar[] | null;
   };
   type RawCalendar = Omit<Calendar, 'slots' | 'nightRules'> & {
@@ -62,7 +59,7 @@ export async function fetchCalendarBundle(groupId: string): Promise<CalendarBund
 
   return {
     ownerId: row.owner_id,
-    members: row.group_members.flatMap((m) => (m.profiles ? [m.profiles] : [])),
+    members: parseMembers(row.group_members),
     calendar: raw && {
       id: raw.id,
       mode: raw.mode,
