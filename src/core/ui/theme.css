@@ -66,11 +66,174 @@ body {
   display: block;
   width: 100%;
   min-height: 48px;
+  padding: 0 12px;
   border: none;
   border-radius: var(--radius);
   background: var(--button);
   color: var(--button-text);
-  font-size: 16px;
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button.secondary {
+  background: var(--bg);
+  color: var(--link);
+}
+
+.button.danger,
+.text-button.danger {
+  color: var(--destructive);
+}
+
+.text-button {
+  border: none;
+  background: none;
+  padding: 8px 0 8px 8px;
+  color: var(--link);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link {
+  color: var(--link);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.page-title {
+  margin: 4px 0;
+  word-break: break-word;
+}
+
+.section-title {
+  margin: 8px 16px 0;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--hint);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stack > p,
+.card > p {
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  background: var(--bg);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px;
+}
+
+.list-item + .list-item {
+  border-top: 1px solid var(--bg-secondary);
+}
+
+.chevron {
+  color: var(--hint);
+  font-size: 22px;
+}
+
+.feature-icon {
+  font-size: 24px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.avatar-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--button);
+  color: var(--button-text);
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  /* без этого длинные варианты в списке растягивают страницу на телефоне */
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--bg-secondary);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text);
+  font: inherit;
+}
+
+.input:focus {
+  outline: 2px solid var(--button);
+  outline-offset: -1px;
+}
+
+.invite-link {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  font-size: 14px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.error {
+  color: var(--destructive);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  z-index: 10;
 }
