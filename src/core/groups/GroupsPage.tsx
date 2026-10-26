@@ -6,7 +6,8 @@ import { timezoneName, utcOffsetLabel } from '../profile/api';
 import { displayName } from '../telegram/telegram';
 import { Avatar } from '../ui/Avatar';
 import { useAsync } from '../ui/useAsync';
-import { createGroup, fetchMyGroups, MAX_GROUPS_PER_USER, MAX_MEMBERS_PER_GROUP } from './api';
+import { isPremium } from '../premium/api';
+import { createGroup, fetchMyGroups, groupsLimit, membersLimit } from './api';
 
 // Главный экран: мои группы и создание новой.
 export function GroupsPage() {
@@ -18,7 +19,9 @@ export function GroupsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const me = displayName(profile);
-  const canCreate = groups.status === 'ready' && groups.data.length < MAX_GROUPS_PER_USER;
+  const premium = isPremium(profile);
+  const limit = groupsLimit(premium);
+  const canCreate = groups.status === 'ready' && groups.data.length < limit;
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +50,15 @@ export function GroupsPage() {
         <span className="chevron">›</span>
       </Link>
 
+      <Link to="/premium" className="card row">
+        <span className="feature-icon">⭐</span>
+        <div className="grow">
+          <div>Премиум</div>
+          <div className="hint">{premium ? 'У вас премиум навсегда' : 'Больше групп, своё имя, цвет группы'}</div>
+        </div>
+        <span className="chevron">›</span>
+      </Link>
+
       <h2 className="section-title">Мои группы</h2>
 
       {groups.status === 'loading' && <p className="hint">Загружаем…</p>}
@@ -64,7 +76,7 @@ export function GroupsPage() {
               <div className="grow">
                 <div>{g.name}</div>
                 <div className="hint">
-                  {g.member_count} из {MAX_MEMBERS_PER_GROUP} участников
+                  {g.member_count} из {membersLimit(g.owner_premium)} участников
                   {g.owner_id === profile.id && ' · вы владелец'}
                 </div>
               </div>
@@ -93,8 +105,8 @@ export function GroupsPage() {
       )}
       {groups.status === 'ready' && !canCreate && (
         <p className="hint">
-          Можно состоять максимум в {MAX_GROUPS_PER_USER} группах. Чтобы создать новую, выйдите из
-          одной.
+          Можно состоять максимум в {limit} группах. Чтобы создать новую, выйдите из одной
+          {!premium && ' — или получите премиум: до 10 групп'}.
         </p>
       )}
     </div>

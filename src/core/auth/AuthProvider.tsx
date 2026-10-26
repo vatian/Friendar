@@ -10,6 +10,8 @@ export interface Profile {
   last_name: string | null;
   photo_url: string | null;
   timezone: string;
+  custom_name: string | null;
+  premium_since: string | null;
 }
 
 type AuthState =
@@ -74,7 +76,7 @@ async function signIn(): Promise<AuthState> {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, telegram_id, username, first_name, last_name, photo_url, timezone')
+    .select('id, telegram_id, username, first_name, last_name, photo_url, timezone, custom_name, premium_since')
     .eq('id', userId)
     .single();
   if (profileError || !profile) {

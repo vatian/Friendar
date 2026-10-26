@@ -1,5 +1,7 @@
 import { HashRouter, Route, Routes, useParams } from 'react-router';
 import { AuthProvider, useAuth } from './core/auth/AuthProvider';
+import { GroupAccent } from './core/groups/accent';
+import { PremiumPage } from './core/premium/PremiumPage';
 import { GroupPage } from './core/groups/GroupPage';
 import { GroupsPage } from './core/groups/GroupsPage';
 import { JoinFromInvite } from './core/groups/JoinFromInvite';
@@ -50,6 +52,7 @@ function Screens() {
       <Routes>
         <Route path="/" element={<GroupsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/premium" element={<PremiumPage />} />
         <Route path="/group/:groupId" element={<GroupPage />} />
         <Route path="/group/:groupId/:featureId" element={<FeatureScreen />} />
         <Route path="*" element={<GroupsPage />} />
@@ -64,5 +67,9 @@ function FeatureScreen() {
   useBackButton(`/group/${groupId}`);
   const feature = features.find((f) => f.id === featureId);
   if (!feature) return <p className="hint">Такой функции нет.</p>;
-  return <feature.GroupScreen groupId={groupId} />;
+  return (
+    <GroupAccent groupId={groupId}>
+      <feature.GroupScreen groupId={groupId} />
+    </GroupAccent>
+  );
 }

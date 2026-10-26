@@ -1,12 +1,8 @@
+import { MEMBERS_SELECT, parseMembers, type GroupMember } from '../../core/groups/members';
 import { supabase } from '../../core/supabase/client';
 import type { Share } from './logic/money.ts';
 
-export interface ExpenseMember {
-  id: string;
-  username: string | null;
-  first_name: string;
-  photo_url: string | null;
-}
+export type ExpenseMember = GroupMember;
 
 export interface ExpensesBundle {
   ownerId: string;
@@ -21,7 +17,7 @@ export async function fetchExpensesBundle(groupId: string): Promise<ExpensesBund
     .from('groups')
     .select(
       `owner_id,
-       group_members(joined_at, profiles(id, username, first_name, photo_url)),
+       ${MEMBERS_SELECT},
        expense_settings(currency),
        expense_shares(expense_id, payer_id, debtor_id, currency, amount,
          expenses(title, spent_on, created_at))`,
@@ -34,7 +30,7 @@ export async function fetchExpensesBundle(groupId: string): Promise<ExpensesBund
   // Связи без сгенерированных типов — уточняем вручную
   const row = data as unknown as {
     owner_id: string;
-    group_members: { joined_at: string; profiles: ExpenseMember | null }[];
+    group_members: unknown;
     expense_settings: { currency: string } | { currency: string }[] | null;
     expense_shares: (Omit<Share, 'title' | 'spent_on' | 'created_at'> & {
       expenses: { title: string; spent_on: string; created_at: string } | null;
@@ -45,9 +41,7 @@ export async function fetchExpensesBundle(groupId: string): Promise<ExpensesBund
   return {
     ownerId: row.owner_id,
     currency: settings?.currency ?? 'RUB',
-    members: row.group_members
-      .sort((a, b) => a.joined_at.localeCompare(b.joined_at))
-      .flatMap((m) => (m.profiles ? [m.profiles] : [])),
+    members: parseMembers(row.group_members),
     shares: row.expense_shares.flatMap((s) =>
       s.expenses
         ? [
